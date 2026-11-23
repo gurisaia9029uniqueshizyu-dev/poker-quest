@@ -583,6 +583,8 @@
 
         <div class="art-panel locked" id="artPanel"></div>
 
+        <div class="art-panel locked" id="uraSecretPanel"></div>
+
         <div class="sec-title"><h2>挑むボスを選ぶ</h2></div>
         <div class="boss-grid" id="bossGrid"></div>
 
@@ -834,6 +836,52 @@
       };
       root.querySelector('#unlockUsePixel').addEventListener('click', ()=>close(true));
       root.querySelector('#unlockKeep').addEventListener('click', ()=>close(false));
+    }
+
+    /* ================= 特典2：裏モードの明かし（通常モードで連続戦を完全制覇） =================
+       条件は「通常モードの1回の連続戦でボス3体すべてを撃破（COMPLETE CLEAR）」のみ。
+       別々の対戦での累積は数えず、裏モード中の完全制覇も対象外。
+       達成の事実だけを localStorage に保存し（特典1のキーとは別管理）、
+       達成後はタイトル画面の特典欄に裏モードの入り方を常時表示する。 */
+    const URA_SECRET_KEY = 'pq_ura_secret_revealed';
+    function uraSecretRevealed(){
+      try{ if(localStorage.getItem(URA_SECRET_KEY) === '1') return true; }catch(e){}
+      return !!window.__pqUraSecret;
+    }
+    function markUraSecretRevealed(){
+      window.__pqUraSecret = true;
+      try{ localStorage.setItem(URA_SECRET_KEY, '1'); }catch(e){}
+      renderUraSecretPanel();
+    }
+    function renderUraSecretPanel(){
+      const panel = $('#uraSecretPanel'); if(!panel) return;
+      if(uraSecretRevealed()){
+        panel.className = 'art-panel';
+        panel.innerHTML = `<h3>特典2：裏モードの入り方</h3>
+          <p>通常モードで連続戦を完全制覇した特典です。<b>タイトル画面のロゴを5回タッチ（クリック）すると裏モード</b>になり、ノーマルスキルが使い放題になります。<b>もう一度ロゴを5回タッチすると通常モードに戻ります。</b></p>`;
+        return;
+      }
+      panel.className = 'art-panel locked';
+      panel.innerHTML = `<div class="mystery">？？？</div>
+        <h3>特典2：？？？</h3>
+        <p>通常モードで連続戦を最後まで勝ち抜き、ボスを3体すべて倒すと分かるらしい…</p>`;
+    }
+    /* 特典2達成のお祝い表示（完全制覇の瞬間に1回だけ）。onClose の後に通常の勝利表示へ進む */
+    function showUraSecretCelebration(onClose){
+      const root = $('#overlayRoot');
+      root.innerHTML = `<div class="backdrop"><div class="modal">
+        <div class="unlock-title">★ 特典2 解放 ★</div>
+        <div class="result-big">SECRET REVEALED!</div>
+        <div class="rules-body"><p>通常モードで連続戦を完全制覇しました！ 特典として<b>「裏モード」</b>の入り方を明かします。</p>
+        <p><b>タイトル画面のロゴを5回タッチ（クリック）すると裏モード</b>になり、ノーマルスキルが使い放題になります。<b>もう一度ロゴを5回タッチすると通常モードに戻ります。</b></p>
+        <p>この入り方は、タイトル画面の特典欄にも常時表示されるようになりました。</p></div>
+        <div class="opt-btns">
+          <button class="btn btn-primary" id="uraSecretClose">閉じる</button>
+        </div></div></div>`;
+      root.querySelector('#uraSecretClose').addEventListener('click', ()=>{
+        root.innerHTML = '';
+        if(typeof onClose === 'function') onClose();
+      });
     }
 
     /* ================= 効果音 =================
@@ -2258,6 +2306,12 @@
             { label:'連続戦を終了してタイトルへ', cls:'', onClick:endCampaign },
           ]);
         }
+        /* 特典2：通常モードで連続戦を完全制覇した瞬間に、裏モードの入り方を明かす（裏モード中の制覇は対象外） */
+        let secretJustRevealed = false;
+        if(G.gauntletComplete && !isUraMode() && !uraSecretRevealed()){
+          markUraSecretRevealed();
+          secretJustRevealed = true;
+        }
         const showVictory = ()=>{
           if(G.gauntletComplete){
             showModal('完全制覇！', `<div class="result-big">COMPLETE CLEAR</div><p>3体すべてのボスを倒し切りました！ 最後の ${esc(G.boss.name)} は ${G.handNo} ハンドで討伐。残ったパーティのHP合計は ${fmt(heroes().reduce((a,h)=>a+h.hp,0))} です。</p>`, '閉じる');
@@ -2265,8 +2319,11 @@
             showGauntletVictoryModal(remaining);
           }
         };
-        /* 初回撃破時は、勝利表示の前に特典解放のお祝いを出す */
-        if(firstUnlock) showUnlockCelebration(showVictory); else showVictory();
+        /* 勝利表示の前に特典のお祝いを出す（特典1→特典2の順） */
+        let celebChain = showVictory;
+        if(secretJustRevealed){ const next = celebChain; celebChain = ()=>showUraSecretCelebration(next); }
+        if(firstUnlock){ const next = celebChain; celebChain = ()=>showUnlockCelebration(next); }
+        celebChain();
       } else {
         render();
         SFX.lose();
@@ -2461,6 +2518,7 @@
     selectedBoss = -1;
     buildStart();
     applyArtStyle();
+    renderUraSecretPanel();
     document.querySelectorAll('[data-boss]').forEach(el=>el.classList.remove('selected'));
     </script>
     <script>
@@ -2854,9 +2912,16 @@
       el.scrollTop = el.scrollHeight;
       render();
       /* 特典：ゲスト端末でも、ボス撃破を見届けたら自分の端末で特典を解放する（表示設定は端末ごと） */
-      if(state.over && G.boss && G.boss.hp<=0 && !artUnlocked()){
-        markArtUnlocked(); applyArtStyle();
-        showUnlockCelebration(null);
+      if(state.over && G.boss && G.boss.hp<=0){
+        const guestFirstUnlock = !artUnlocked();
+        if(guestFirstUnlock){ markArtUnlocked(); applyArtStyle(); }
+        /* 特典2：通常モードの対戦で連続戦の完全制覇を見届けたら、この端末でも裏モードの入り方を明かす */
+        const guestSecret = G.gauntletComplete && !isUraMode() && !uraSecretRevealed();
+        if(guestSecret) markUraSecretRevealed();
+        let gChain = null;
+        if(guestSecret) gChain = ()=>showUraSecretCelebration(null);
+        if(guestFirstUnlock){ const nextG = gChain; gChain = ()=>showUnlockCelebration(nextG); }
+        if(gChain) gChain();
       }
       if(!prevChoice && !NET.pendingDiceReq){
         if(state.phase==='handEnd') setAction('ハンド終了 ― ホストが次のハンドへ進めます', []);
