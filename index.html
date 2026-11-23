@@ -683,6 +683,7 @@
         <li><b>目的：</b>3人パーティ（各HP 20,000）でボスのHPを0にすれば勝利。全員のHPが0になると敗北。</li>
         <li><b>連続戦（ボス連戦）：</b>ボスを倒すと、そのまま残りのボスへ連続で挑める。次のボス戦へは<b>各ヒーローの残りHP（回復しない）とノーマルスキルの使用済み状態をそのまま持ち越す</b>（ノーマルスキルの「1回のみ」は連続戦全体を通しての制限）。<b>HP0のヒーローは戦闘不能のまま持ち越す</b>（僧侶の「蘇生」でのみ復帰できる）。ブラインドは次のボス戦では500から再開し、25分ごとのブラインドアップ・タイマーもリセットされる。<b>3体すべてのボスを倒すと完全制覇（完全クリア）</b>。途中で連続戦をやめてタイトルへ戻ることもできる。オンライン対戦でもホストの進行で同じように連続戦ができる。</li>
         <li><b>形式：</b>フィックスリミット・ホールデム。ブラインド500（SB 250）から始まり、<b>対戦開始からの経過時間で25分ごとに+500ずつ上がっていく（最大3,000／本戦準拠の時間制）</b>。ハンドの途中で上がることはなく、次のハンドから新しいブラインドが適用される。画面上部に次のブラインドアップまでの残り時間（カウントダウン）を表示し、ブラインドアップ時はログと効果音で知らせる。ベット額はプリフロップ＆フロップ＝ブラインド額、ターン＆リバー＝その2倍。1ストリート最大4ベット（ベット＋3レイズ）まで。</li>
+        <li><b>プレイの順番（ホールデム正式手順）：</b>アクションは<b>ボタン（ディーラー）を基準に時計回り</b>に進む。席配置での時計回りは「ボス（上）→右のヒーロー→中央のヒーロー→左のヒーロー」の順。<b>SBはボタンの左隣、その次がBB</b>で、カードはSBから時計回りに配られる。<b>プリフロップはBBの左隣から</b>時計回りに行動し、<b>ポストフロップ（フロップ以降）はボタンの左隣の生存者から</b>時計回りに行動する。<b>ボタンはハンドごとに時計回りに1席移動</b>する。各席には BTN／SB／BB のバッジが表示される。</li>
         <li><b>ダメージ計算：</b>味方同士のチップ移動はない。各ヒーローはボスと個別勝負し、<b>勝てば自分のベット総額ぶんボスにダメージ、負ければベット総額ぶん自分のHPを失う</b>。フォールドした場合もベット分は失う。ボスがフォールドしたら、残っていた全員がベット分ダメージを与える。引き分けはダメージなし。</li>
         <li><b>ボスのユニークスキル：</b>発動タイミングはボスごとに異なる。<b>大魔導士</b>は「連続攻撃（連携攻撃）」を持つため、<b>毎ハンド開始前</b>にダイスを振って発動する。<b>キメラ（毒＆混乱）とゴーレム（強攻撃）</b>はハンド開始前には発動せず、<b>ボスがそのハンドに勝利した時にだけ</b>ダイスを振って発動する（ボスの勝利＝ショーダウンで残っていた全員にボスが勝つか、ヒーロー全員がフォールドした時）。</li>
         <li><b>ハンド開始時：</b>まず毒のダメージを受ける（大魔導士の場合は続けてそのユニークスキルも発動する）。</li>
@@ -691,7 +692,7 @@
         <li><b>攻撃エフェクト：</b>ヒーローがボスを攻撃すると、職業ごとのエフェクトとダメージ数字が表示される（戦士＝斬撃／魔法使い＝魔法／僧侶＝聖なる光）。回復のときは緑の回復エフェクトが出る。</li>
         <li><b>ノーマルスキル：</b>各スキル1回だけ、いつでも使える。<b>テーブル上のヒーローの席をタップすると、そのヒーローのノーマルスキル一覧が開く</b>（手番の席には「タップでスキル」の目印が出る）。戦士の「ダメージカット」「かばう」はカード原文どおりダメージ計算後に使うかどうかを選ぶ。</li>
         <li><b>効果音：</b>戦闘の効果音（職業ごとの攻撃音、回復、被弾、ボスの咆哮、会心の一撃など）はフリー音源「Springin' Sound Stock」の戦闘カテゴリから採用した実音源。そのほかカードを配る音、チップの音、ダイスの音も鳴る。画面右上の「効果音」ボタンでON／OFFを切り替えられる。</li>
-        <li><b>状態異常：</b>毒＝ハンド開始時に1,000ダメージ。混乱＝<b>ハンド終了時に混乱のままで、そのハンドでチップを獲得し（勝利し）、かつベットがあったヒーローは、ボスと自分を含む味方全員（計4人）の中からランダムで1人を攻撃する</b>。ダメージは<b>そのハンドで本人がベットした額</b>で、対象がボスならボスのHPが、味方・自分ならそのキャラのHPがその額だけ減る。<b>ベットが無ければ何も起きず、チップを獲得していない混乱キャラも攻撃しない</b>。どちらも僧侶の回復スキルで解除できる。</li>
+        <li><b>状態異常：</b>毒＝ハンド開始時に1,000ダメージ。混乱＝<b>混乱状態のヒーローが勝利（チップを獲得）した場合、その勝利ダメージ（本人のベット額をもとにした攻撃ダメージ）の行き先が50%の確率で振り分けられる</b>。<b>50%は通常どおり相手（ボス）にそのままダメージ</b>を与え、<b>50%はボスではなく、味方の誰か（自分を含む生存ヒーロー3人の中からランダムで1人）に同じ額のダメージ</b>を与える。振り分けは自動で判定され、結果はログとエフェクトで表示される。<b>混乱していないヒーローの通常の勝利や、勝利しなかった場合は従来どおり</b>で、ハンド終了時に追加で攻撃することはない。どちらも僧侶の回復スキルで解除できる。</li>
         <li><b>戦闘不能：</b>HPが0になったヒーローはハンドに参加できない。僧侶の「蘇生」でのみ復帰できる。</li>
         <li><b>特典イラスト：</b>ボスを<b>1回でも撃破すると特典が解放</b>され、タイトル画面の「イラスト切替」で通常イラストと<b>動くドット絵</b>（全6キャラ分、待機アニメーション付き）を切り替えられるようになる。解放状態はこの端末に保存され、次回以降も使える。オンライン対戦ではイラスト切替は各端末の表示設定として扱われ、対戦の進行には影響しない。</li>
       </ul>`;
@@ -990,6 +991,19 @@
     }
     function heroes(){ return G.seats.slice(0,3); }
     function livingHeroes(){ return heroes().filter(h=>h.hp>0); }
+    /* ============ 席の時計回り順（テキサスホールデム正式手順） ============
+       画面上の席配置は「ボス＝上」「ヒーロー3人＝下段・左／中央／右」。
+       時計回りは 上（ボス）→ 右ヒーロー → 中央ヒーロー → 左ヒーロー → 上（ボス）… の順で、
+       席番号では [3, 2, 1, 0] の循環になる。すべての手番・ブラインド・配布はこの順で進める。
+       ボタンの左隣＝時計回りで次の席（SB）、その次がBB。 */
+    const CLOCKWISE = [3, 2, 1, 0];
+    function nextClockwise(seat){ const i = CLOCKWISE.indexOf(seat); return CLOCKWISE[(((i < 0 ? 0 : i) + 1) % 4)]; }
+    function prevClockwise(seat){ const i = CLOCKWISE.indexOf(seat); return CLOCKWISE[(((i < 0 ? 0 : i) + 3) % 4)]; }
+    function nextActiveClockwise(from, active){
+      let s = nextClockwise(from);
+      while(!active.includes(s)) s = nextClockwise(s);
+      return s;
+    }
     /* ブラインドは時間制（本戦準拠）：対戦開始から25分ごとに+500、最大3,000。
        ハンドの途中で上がることはなく、各ハンド開始時に経過時間から決まる。 */
     const BLIND_INTERVAL_MS = 25 * 60 * 1000;
@@ -1076,6 +1090,8 @@
           <div class="seat-who">
             <div class="seat-name">${esc(p.name)}
               ${G.button===p.seat?'<span class="pos-badge">BTN</span>':''}
+              ${G.sbSeat===p.seat?'<span class="pos-badge">SB</span>':''}
+              ${G.bbSeat===p.seat?'<span class="pos-badge">BB</span>':''}
               ${isTurn?'<span class="turn-badge">TURN</span>':''}
               ${p.folded?'<span class="st-chip fold-tag">フォールド</span>':''}
               ${chips}
@@ -1376,40 +1392,36 @@
         ], { duration:380, easing:'ease-out' });
       }catch(e){}
     }
-    /* ================= ハンド終了時：混乱の攻撃 =================
-       発動条件は「ハンド終了時点で混乱のまま」＋「そのハンドでチップを獲得した（勝利した）」
-       ＋「ベット（コミット額）がある」の3つをすべて満たす場合のみ。
-       ボス＋自分を含む味方（計4人）からランダムで1人を攻撃し、
-       ダメージは本人がそのハンドでベットした額。ベットが無ければ何も起きない。
-       ダメージカット／かばうの対象外。 */
-    async function confusionHandEndPhase(){
-      const attackers = heroes().filter(h=>h.inHand && h.hp>0 && h.confused && h.wonHand && h.committed>0);
-      if(!attackers.length) return;
-      G.phase = 'handEnd'; G.turnSeat = -1; render();
-      log('―― ハンド終了時：混乱の効果が発動 ――', 'lg-boss');
-      await sleep(550);
-      for(const attacker of attackers){
-        if(G.over || G.boss.hp<=0) return;
-        if(attacker.hp<=0 || !attacker.confused) continue;
-        const dmg = attacker.committed;
-        const targets = [G.boss, ...heroes()];
-        const target = targets[randInt(0, targets.length-1)];
-        if(target===G.boss){
-          log(`${esc(attacker.name)}は混乱してボスを攻撃した！（ダメージ ${fmt(dmg)}）`, 'lg-boss');
-          await playAttackFX(attacker, dmg, attacker.id);
-          damageBoss(dmg, `${attacker.name}の混乱攻撃`);
-        } else {
-          const targetLabel = target===attacker ? '自分自身' : target.name;
-          log(`${esc(attacker.name)}は混乱して${esc(targetLabel)}を攻撃した！（ダメージ ${fmt(dmg)}）`, 'lg-boss');
-          playConfusionHitFX(attacker, target, dmg);
-          hurtHero(target, dmg, `${attacker.name}の混乱攻撃`);
-          render();
-          await sleep(650);
-        }
-        render();
-        await sleep(300);
-        if(checkEnd()){ render(); return; }
+    /* ================= 勝利ダメージの行き先（混乱時の50%振り分け） =================
+       混乱状態のヒーローが勝利（チップを獲得）した場合、その勝利ダメージの行き先を
+       自動のコイン判定（50%）で振り分ける：
+         ・50% ― 通常どおり相手（ボス）にそのままダメージ
+         ・50% ― ボスではなく、味方の誰か（自分を含む生存ヒーロー3人からランダムで1人）に同じ額のダメージ
+       混乱していない通常の勝利や、勝利しなかった場合は従来どおり（この振り分けは行わない）。
+       結果（誰に当たったか）はログとエフェクト（ボス＝攻撃エフェクト／味方＝被弾エフェクト）で示す。
+       ダメージカット／かばうの対象外。戻り値は行き先（'boss' / 'ally' / 'none'）。 */
+    async function dealVictoryDamage(h, dmg, fxVariant){
+      if(dmg<=0) return 'none';
+      if(!h.confused){
+        await playAttackFX(h, dmg, fxVariant);
+        damageBoss(dmg, `${h.name}の攻撃`);
+        return 'boss';
       }
+      if(Math.random() < 0.5){
+        log(`${esc(h.name)}は混乱しているが、攻撃はボスに向かった！（混乱判定：ボスにダメージ ${fmt(dmg)}）`, 'lg-boss');
+        await playAttackFX(h, dmg, fxVariant);
+        damageBoss(dmg, `${h.name}の攻撃（混乱）`);
+        return 'boss';
+      }
+      const allies = livingHeroes();
+      const target = allies.length ? allies[randInt(0, allies.length-1)] : h;
+      const targetLabel = target===h ? '自分自身' : target.name;
+      log(`${esc(h.name)}は混乱して攻撃がそれた！ ${esc(targetLabel)}にダメージ ${fmt(dmg)}（混乱判定：味方に命中）`, 'lg-boss');
+      playConfusionHitFX(h, target, dmg);
+      hurtHero(target, dmg, `${h.name}の混乱攻撃`);
+      render();
+      await sleep(650);
+      return 'ally';
     }
 
     /* ================= 対象選択モーダル ================= */
@@ -1522,6 +1534,7 @@
         p.inHand = p.kind==='boss' ? true : p.hp>0;
       });
       G.board = [];
+      G.sbSeat = -1; G.bbSeat = -1;
       log(`――― ハンド ${G.handNo} 開始（ブラインド ${fmt(G.bb)}） ―――`, 'lg-sys');
       const lvNow = blindLevelNow();
       if(lvNow > (G.blindLevel || 0)){
@@ -1550,22 +1563,26 @@
         if(checkEnd()){ render(); return; }
       }
 
-      /* ブラインド＆配布 */
+      /* ブラインド＆配布（ホールデム正式手順・時計回り）
+         ボタンはハンドごとに時計回りに1席移動。SB＝ボタンの左隣（時計回りで次の参加者）、
+         BB＝その次。カードはSBから時計回りに配る。 */
       G.deck = newDeck();
-      G.button = (G.button + 1) % 4;
+      G.button = nextClockwise(G.button);
       const active = [0,1,2,3].filter(i=>G.seats[i].inHand);
-      const nextActive = from => { let i=from; do{ i=(i+1)%4; }while(!active.includes(i)); return i; };
-      const sbSeat = nextActive(G.button), bbSeat = nextActive(sbSeat);
+      const sbSeat = nextActiveClockwise(G.button, active), bbSeat = nextActiveClockwise(sbSeat, active);
+      G.sbSeat = sbSeat; G.bbSeat = bbSeat;
       postBlind(G.seats[sbSeat], G.bb/2, 'SB');
       postBlind(G.seats[bbSeat], G.bb, 'BB');
-      for(let r=0;r<2;r++) for(const i of active) G.seats[i].cards.push(G.deck.pop());
+      const dealOrder = [];
+      { let s = sbSeat; do { dealOrder.push(s); s = nextActiveClockwise(s, active); } while(s !== sbSeat); }
+      for(let r=0;r<2;r++) for(const i of dealOrder) G.seats[i].cards.push(G.deck.pop());
       SFX.card();
       G.phase='betting';
-      log(`ボタンは${esc(G.seats[G.button].name)}。カードが配られた`, 'lg-sys');
+      log(`ボタンは${esc(G.seats[G.button].name)}、SBは${esc(G.seats[sbSeat].name)}、BBは${esc(G.seats[bbSeat].name)}。カードが配られた`, 'lg-sys');
       render(); await sleep(450);
 
-      /* ストリート進行 */
-      let firstActor = nextActive(bbSeat);
+      /* ストリート進行：プリフロップはBBの左隣（時計回りで次）から */
+      let firstActor = nextActiveClockwise(bbSeat, active);
       for(let street=0; street<4; street++){
         G.street = street;
         if(street===1){ G.board.push(G.deck.pop(), G.deck.pop(), G.deck.pop()); SFX.card(); log('―― フロップ ――', 'lg-sys'); render(); await sleep(650); }
@@ -1575,7 +1592,7 @@
         if(contenders.length<=1) break;
         if(G.boss.folded) break;
         if(contenders.filter(p=>!p.allIn).length>=2){
-          await bettingRound(street===0 ? firstActor : nextActive(G.button));
+          await bettingRound(street===0 ? firstActor : nextActiveClockwise(G.button, active));
         } else if(street<3){
           log('オールインのため、残りのカードをめくる', 'lg-sys');
         }
@@ -1598,8 +1615,6 @@
         }
       }
       await resolveHand();
-      if(checkEnd()){ render(); return; }
-      await confusionHandEndPhase();
       if(checkEnd()){ render(); return; }
       G.handActive = false; G.phase='handEnd'; G.turnSeat=-1;
       heroes().forEach(h=>{ h.buffs = h.buffs.filter(b=>b.hand>G.handNo); });
@@ -1650,15 +1665,17 @@
     async function bettingRound(firstActor){
       let currentBet = Math.max(...G.seats.filter(p=>p.inHand).map(p=>p.streetCommit));
       let betLevel = G.street===0 ? 1 : (currentBet>0 ? 1 : 0);
-      let lastActor = (firstActor + 3) % 4;
+      let lastActor = prevClockwise(firstActor);
       while(true){
         if(G.boss.folded) return;
         const contenders = G.seats.filter(p=>p.inHand && !p.folded);
         if(contenders.length<=1) return;
         let idx = -1;
+        let candSeat = lastActor;
         for(let step=1; step<=4; step++){
-          const cand = G.seats[(lastActor+step)%4];
-          if(cand.inHand && !cand.folded && !cand.allIn && (!cand.acted || cand.streetCommit<currentBet)){ idx=(lastActor+step)%4; break; }
+          candSeat = nextClockwise(candSeat);
+          const cand = G.seats[candSeat];
+          if(cand.inHand && !cand.folded && !cand.allIn && (!cand.acted || cand.streetCommit<currentBet)){ idx=candSeat; break; }
         }
         if(idx===-1) return;
         const p = G.seats[idx];
@@ -1791,7 +1808,7 @@
       render();
     }
     async function heroWin(h){
-      h.wonHand = true; /* このハンドでチップを獲得した（混乱のハンド終了時攻撃の発動条件） */
+      h.wonHand = true; /* このハンドでチップを獲得した（勝利） */
       G.activeHeroSeat = h.seat;
       const buffs = h.buffs.filter(b=>b.hand===G.handNo);
       const mult = buffs.reduce((a,b)=>a*b.mult, 1);
@@ -1806,13 +1823,12 @@
           dmg = ceilTo(dmg*m, 500);
           log(`戦士の攻撃力増加！ ダメージが${roll===6?'50':'25'}%増えた`, 'lg-good');
         }
-        await playAttackFX(h, dmg, 'warrior');
-        damageBoss(dmg, `${h.name}の攻撃`);
+        await dealVictoryDamage(h, dmg, 'warrior');
         return;
       }
-      await playAttackFX(h, dmg);
-      damageBoss(dmg, `${h.name}の攻撃`);
+      const victoryDest = await dealVictoryDamage(h, dmg);
       if(G.boss.hp<=0) return;
+      if(victoryDest==='ally' && checkEnd()) return;
       if(h.id==='mage'){
         const [roll] = await rollDiceVisual(1, '魔法使いのユニークスキル「追加ダメージ」', h.seat);
         if(roll<=2) log('魔法使いのユニークスキルは失敗…', 'lg-sys');
@@ -2062,9 +2078,10 @@
         hs = HERO_DEFS.map(mkHero);
       }
       hs.forEach((h,i)=>{ h.seat=i; });
+      /* button の初期値 1 は「時計回り順で seat0 の直前」：初ハンド開始時に時計回りへ1つ進めて seat0 が最初のボタンになる */
       G = {
         seats:[...hs, mkBoss(def)], boss:null, handNo:1, bb:500, street:0,
-        board:[], deck:[], button:3, phase:'start', handActive:false,
+        board:[], deck:[], button:1, sbSeat:-1, bbSeat:-1, phase:'start', handActive:false,
         revealBoss:false, turnSeat:-1, busy:false, choiceOpen:false,
         pendingAction:null, over:false, logLines:[], activeHeroSeat:null,
         defeated:Array.isArray(defeatedSoFar) ? defeatedSoFar.slice() : [],
@@ -2238,6 +2255,7 @@
       }
       return { seats:G.seats.map(ss), handNo:G.handNo, bb:G.bb, street:G.street, phase:G.phase,
         handActive:G.handActive, revealBoss:G.revealBoss, turnSeat:G.turnSeat, button:G.button,
+        sbSeat:(typeof G.sbSeat==='number' ? G.sbSeat : -1), bbSeat:(typeof G.bbSeat==='number' ? G.bbSeat : -1),
         board:G.board, over:G.over, logLines:G.logLines.slice(-60),
         defeated:(G.defeated || []).slice(), gauntletComplete:!!G.gauntletComplete,
         blindRemainSec, blindMaxed };
@@ -2532,7 +2550,7 @@
       };
       const prevChoice = G ? G.choiceOpen : false;
       G = { seats:state.seats.map(revive), boss:null, handNo:peerNum(state.handNo, 1), bb:peerNum(state.bb), street:peerNum(state.street),
-        board:Array.isArray(state.board) ? state.board.slice(0,5).map(peerCard) : [], deck:[], button:peerNum(state.button), phase:String(state.phase || ''), handActive:!!state.handActive,
+        board:Array.isArray(state.board) ? state.board.slice(0,5).map(peerCard) : [], deck:[], button:peerNum(state.button), sbSeat:peerNum(state.sbSeat, -1), bbSeat:peerNum(state.bbSeat, -1), phase:String(state.phase || ''), handActive:!!state.handActive,
         revealBoss:!!state.revealBoss, turnSeat:peerNum(state.turnSeat, -1), busy:false, choiceOpen:prevChoice,
         pendingAction:null, over:!!state.over, logLines:peerLogLines(state.logLines), activeHeroSeat:null,
         defeated:(Array.isArray(state.defeated) ? state.defeated : []).filter(id=>BOSS_DEFS.some(b=>b.id===id)),
