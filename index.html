@@ -598,7 +598,7 @@
         <li><b>攻撃エフェクト：</b>ヒーローがボスを攻撃すると、職業ごとのエフェクトとダメージ数字が表示される（戦士＝斬撃／魔法使い＝魔法／僧侶＝聖なる光）。回復のときは緑の回復エフェクトが出る。</li>
         <li><b>ノーマルスキル：</b>各スキル1回だけ、いつでも使える。<b>テーブル上のヒーローの席をタップすると、そのヒーローのノーマルスキル一覧が開く</b>（手番の席には「タップでスキル」の目印が出る）。戦士の「ダメージカット」「かばう」はカード原文どおりダメージ計算後に使うかどうかを選ぶ。</li>
         <li><b>効果音：</b>戦闘の効果音（職業ごとの攻撃音、回復、被弾、ボスの咆哮、会心の一撃など）はフリー音源「Springin' Sound Stock」の戦闘カテゴリから採用した実音源。そのほかカードを配る音、チップの音、ダイスの音も鳴る。画面右上の「効果音」ボタンでON／OFFを切り替えられる。</li>
-        <li><b>状態異常：</b>毒＝ハンド開始時に1,000ダメージ。混乱＝自分の番に50%の確率で勝手に行動してしまう。どちらも僧侶の回復スキルで解除できる。</li>
+        <li><b>状態異常：</b>毒＝ハンド開始時に1,000ダメージ。混乱＝<b>ハンド終了時に混乱のままで、そのハンドでチップを獲得し（勝利し）、かつベットがあったヒーローは、ボスと自分を含む味方全員（計4人）の中からランダムで1人を攻撃する</b>。ダメージは<b>そのハンドで本人がベットした額</b>で、対象がボスならボスのHPが、味方・自分ならそのキャラのHPがその額だけ減る。<b>ベットが無ければ何も起きず、チップを獲得していない混乱キャラも攻撃しない</b>。どちらも僧侶の回復スキルで解除できる。</li>
         <li><b>戦闘不能：</b>HPが0になったヒーローはハンドに参加できない。僧侶の「蘇生」でのみ復帰できる。</li>
       </ul>`;
 
@@ -795,7 +795,7 @@
       return { kind:'hero', id:def.id, def, name:def.name, img:def.img,
         hp:def.hp, maxHp:def.hp, cards:[], inHand:false, folded:false, allIn:false,
         committed:0, streetCommit:0, acted:false, lastAction:'',
-        poison:false, confused:false, buffs:[], used:{}, armedCut:false,
+        poison:false, confused:false, buffs:[], used:{}, armedCut:false, wonHand:false,
         coverFor:-1, coverBy:-1, seat:-1 };
     }
     function mkBoss(def){
@@ -1137,6 +1137,66 @@
       }
     }
 
+    /* 混乱攻撃が味方／自分に当たったときの被弾エフェクト（ダメージ数字＋揺れ＋職業別の音） */
+    function playConfusionHitFX(attacker, target, dmg){
+      if(!attacker || !target) return;
+      if(window.NET && NET.role==='host' && typeof netSendAll==='function') netSendAll({type:'fxConfusion', attackerSeat:attacker.seat, targetSeat:target.seat, dmg});
+      if(attacker.id==='warrior') SFX.slash(); else if(attacker.id==='priest') SFX.holy(); else SFX.magic();
+      const layer = $('#fxLayer'); if(!layer) return;
+      const el = heroSeatEl(target.seat); if(!el) return;
+      const c = seatCenterOf(el);
+      const dn = document.createElement('div');
+      dn.className = 'fx-dmgnum'; dn.textContent = '-' + fmt(dmg);
+      dn.style.left = c.x + 'px'; dn.style.top = (c.y - 44) + 'px'; dn.style.color = '#ff9a9a';
+      layer.appendChild(dn);
+      dn.animate([
+        { transform:'translate(-50%,0)', opacity:0 },
+        { transform:'translate(-50%,-12px)', opacity:1, offset:.25 },
+        { transform:'translate(-50%,-42px)', opacity:0 }
+      ], { duration:950, easing:'ease-out', fill:'forwards' }).finished.catch(()=>{}).finally(()=>dn.remove());
+      try{
+        el.animate([
+          { transform:'translateX(0)' }, { transform:'translateX(-6px)' },
+          { transform:'translateX(5px)' }, { transform:'translateX(0)' }
+        ], { duration:380, easing:'ease-out' });
+      }catch(e){}
+    }
+    /* ================= ハンド終了時：混乱の攻撃 =================
+       発動条件は「ハンド終了時点で混乱のまま」＋「そのハンドでチップを獲得した（勝利した）」
+       ＋「ベット（コミット額）がある」の3つをすべて満たす場合のみ。
+       ボス＋自分を含む味方（計4人）からランダムで1人を攻撃し、
+       ダメージは本人がそのハンドでベットした額。ベットが無ければ何も起きない。
+       ダメージカット／かばうの対象外。 */
+    async function confusionHandEndPhase(){
+      const attackers = heroes().filter(h=>h.inHand && h.hp>0 && h.confused && h.wonHand && h.committed>0);
+      if(!attackers.length) return;
+      G.phase = 'handEnd'; G.turnSeat = -1; render();
+      log('―― ハンド終了時：混乱の効果が発動 ――', 'lg-boss');
+      await sleep(550);
+      for(const attacker of attackers){
+        if(G.over || G.boss.hp<=0) return;
+        if(attacker.hp<=0 || !attacker.confused) continue;
+        const dmg = attacker.committed;
+        const targets = [G.boss, ...heroes()];
+        const target = targets[randInt(0, targets.length-1)];
+        if(target===G.boss){
+          log(`${esc(attacker.name)}は混乱してボスを攻撃した！（ダメージ ${fmt(dmg)}）`, 'lg-boss');
+          await playAttackFX(attacker, dmg, attacker.id);
+          damageBoss(dmg, `${attacker.name}の混乱攻撃`);
+        } else {
+          const targetLabel = target===attacker ? '自分自身' : target.name;
+          log(`${esc(attacker.name)}は混乱して${esc(targetLabel)}を攻撃した！（ダメージ ${fmt(dmg)}）`, 'lg-boss');
+          playConfusionHitFX(attacker, target, dmg);
+          hurtHero(target, dmg, `${attacker.name}の混乱攻撃`);
+          render();
+          await sleep(650);
+        }
+        render();
+        await sleep(300);
+        if(checkEnd()){ render(); return; }
+      }
+    }
+
     /* ================= 対象選択モーダル ================= */
     function chooseOption(title, text, options){
       if(window.NET && NET.role==='host' && typeof netRemoteChoice==='function'){
@@ -1243,7 +1303,7 @@
       G.handActive = true; G.phase='start'; G.street = 0;
       G.bb = bbNow(); G.revealBoss = false; G.turnSeat = -1;
       G.seats.forEach(p=>{
-        p.cards=[]; p.committed=0; p.streetCommit=0; p.folded=false; p.allIn=false; p.acted=false; p.lastAction='';
+        p.cards=[]; p.committed=0; p.streetCommit=0; p.folded=false; p.allIn=false; p.acted=false; p.lastAction=''; p.wonHand=false;
         p.inHand = p.kind==='boss' ? true : p.hp>0;
       });
       G.board = [];
@@ -1315,6 +1375,8 @@
         }
       }
       await resolveHand();
+      if(checkEnd()){ render(); return; }
+      await confusionHandEndPhase();
       if(checkEnd()){ render(); return; }
       G.handActive = false; G.phase='handEnd'; G.turnSeat=-1;
       heroes().forEach(h=>{ h.buffs = h.buffs.filter(b=>b.hand>G.handNo); });
@@ -1402,19 +1464,7 @@
         G.busy = false;
       } else {
         G.turnSeat = p.seat; render();
-        if(p.confused && Math.random()<0.5){
-          const legal = [];
-          if(toCall>0) legal.push('fold');
-          if(toCall===0) legal.push('check'); else legal.push('call');
-          if(currentBet===0 && capacity>0) legal.push('bet');
-          if(canRaise) legal.push('raise');
-          choice = legal[randInt(0, legal.length-1)];
-          log(`${esc(p.name)}は混乱して勝手に行動した！`, 'lg-boss');
-          setAction(`<span class="who">${esc(p.name)}</span> は混乱している…`, []);
-          await sleep(900);
-        } else {
-          choice = await waitHeroAction(p, toCall, canRaise, currentBet, size, capacity);
-        }
+        choice = await waitHeroAction(p, toCall, canRaise, currentBet, size, capacity);
       }
       G.turnSeat = -1;
       applyAction(p, choice, currentBet, size);
@@ -1518,6 +1568,7 @@
       render();
     }
     async function heroWin(h){
+      h.wonHand = true; /* このハンドでチップを獲得した（混乱のハンド終了時攻撃の発動条件） */
       G.activeHeroSeat = h.seat;
       const buffs = h.buffs.filter(b=>b.hand===G.handNo);
       const mult = buffs.reduce((a,b)=>a*b.mult, 1);
@@ -1812,6 +1863,31 @@
     }
     function jobName(id){ const d = HERO_DEFS.find(x=>x.id===id); return d ? d.name : id; }
 
+    /* ---------- ピア受信データの検証・無害化 ----------
+       ホストも「他のプレイヤー」であり、改変されたクライアントが任意の文字列を送りうる。
+       ゲスト側では受信した文字列をHTMLとして解釈せず、数値・真偽値・カードは型と範囲を検証してから使う。 */
+    const LOG_CLS_OK = ['lg-boss','lg-good','lg-sys'];
+    function peerNum(v, dflt){ const n = Number(v); return Number.isFinite(n) ? n : (dflt || 0); }
+    function peerCard(c){
+      if(c && c.hidden) return { hidden:true };
+      if(c && Number.isInteger(c.s) && Number.isInteger(c.r) && c.s>=0 && c.s<4 && c.r>=0 && c.r<13) return { s:c.s, r:c.r };
+      return { hidden:true };
+    }
+    function peerRich(v){
+      /* 全体をエスケープした上で、表示専用の無害なタグ（b / small / span.who）だけを復元する */
+      return esc(String(v==null ? '' : v))
+        .replace(/&lt;b&gt;/g, '<b>').replace(/&lt;\/b&gt;/g, '</b>')
+        .replace(/&lt;small&gt;/g, '<small>').replace(/&lt;\/small&gt;/g, '</small>')
+        .replace(/&lt;span class=&quot;who&quot;&gt;/g, '<span class="who">').replace(/&lt;\/span&gt;/g, '</span>');
+    }
+    function peerLogLines(lines){
+      if(!Array.isArray(lines)) return [];
+      return lines.slice(-60).map(l=>({
+        msg: String((l && l.msg)==null ? '' : l.msg),
+        cls: (l && LOG_CLS_OK.includes(l.cls)) ? l.cls : '',
+      }));
+    }
+
     /* ---------- 状態スナップショット（閲覧者ごとに手札を隠す） ---------- */
     function netSnapshotFor(viewerSeat){
       const ss = p=>({
@@ -2061,7 +2137,9 @@
       } else if(msg.type==='error'){
         netStatus(msg.message || 'エラーが発生しました。', true);
       } else if(msg.type==='lobby'){
-        NET.lobby = msg.players || [];
+        NET.lobby = (Array.isArray(msg.players) ? msg.players : []).slice(0,3).map(p=>({
+          seat:peerNum(p && p.seat), name:String((p && p.name) || 'プレイヤー').slice(0,12),
+          jobId:HERO_DEFS.some(d=>d.id===(p && p.jobId)) ? p.jobId : 'warrior' }));
         $('#guestLobbyList').innerHTML = lobbyListHTML(NET.lobby, NET.mySeat);
       } else if(msg.type==='start'){
         NET.started = true;
@@ -2077,33 +2155,39 @@
       } else if(msg.type==='prompt'){
         guestHandlePrompt(msg);
       } else if(msg.type==='dice'){
-        $('#diceBox').innerHTML = (msg.results||[]).map(v=>dieHTML(v)).join('');
-        $('#diceLabel').innerHTML = `${esc(msg.label||'サイコロ')}<br><span class="dt-result">出目：${(msg.results||[]).join(' ＋ ')}${msg.count>1 ? ' ＝ ' + (msg.results||[]).reduce((a,x)=>a+x,0) : ''}</span>`;
+        const results = (Array.isArray(msg.results) ? msg.results : []).slice(0,4).map(v=>{ const n = Math.round(Number(v)); return (n>=1 && n<=6) ? n : 1; });
+        $('#diceBox').innerHTML = results.map(v=>dieHTML(v)).join('');
+        $('#diceLabel').innerHTML = `${esc(msg.label||'サイコロ')}<br><span class="dt-result">出目：${results.join(' ＋ ')}${results.length>1 ? ' ＝ ' + results.reduce((a,x)=>a+x,0) : ''}</span>`;
       } else if(msg.type==='fx'){
         if(G && G.seats[msg.seat]) playAttackFX(G.seats[msg.seat], msg.dmg, msg.variant);
       } else if(msg.type==='fxHeal'){
         if(G && G.seats[msg.seat]) playHealFX(G.seats[msg.seat], msg.amt);
+      } else if(msg.type==='fxConfusion'){
+        if(G && G.seats[msg.attackerSeat] && G.seats[msg.targetSeat]) playConfusionHitFX(G.seats[msg.attackerSeat], G.seats[msg.targetSeat], msg.dmg);
       } else if(msg.type==='hostLeft'){
         guestHostGone();
       }
     }
     function guestApplyState(state){
-      if(!state) return;
+      if(!state || !Array.isArray(state.seats) || state.seats.length!==4) return;
       const revive = s=>{
+        s = (s && typeof s==='object') ? s : {};
         const def = (s.kind==='boss' ? BOSS_DEFS : HERO_DEFS).find(d=>d.id===s.defId) || HERO_DEFS[0];
-        return { kind:s.kind, id:def.id, def, name:s.name, img:s.img, hp:s.hp, maxHp:s.maxHp,
-          cards:s.cards||[], inHand:s.inHand, folded:s.folded, allIn:false, committed:s.committed,
-          streetCommit:0, acted:false, lastAction:s.lastAction||'', poison:s.poison, confused:s.confused,
-          buffs:s.buffs||[], used:s.used||{}, armedCut:false, coverFor:-1, coverBy:-1, seat:s.seat };
+        return { kind:s.kind==='boss' ? 'boss' : 'hero', id:def.id, def, name:String(s.name || def.name).slice(0,24), img:def.img,
+          hp:peerNum(s.hp), maxHp:Math.max(1, peerNum(s.maxHp, def.hp)),
+          cards:Array.isArray(s.cards) ? s.cards.slice(0,7).map(peerCard) : [], inHand:!!s.inHand, folded:!!s.folded, allIn:false, committed:peerNum(s.committed),
+          streetCommit:0, acted:false, lastAction:String(s.lastAction || '').slice(0,24), poison:!!s.poison, confused:!!s.confused,
+          buffs:(Array.isArray(s.buffs) ? s.buffs : []).filter(b=>b && Number.isFinite(Number(b.mult)) && Number.isFinite(Number(b.hand))).map(b=>({ mult:Number(b.mult), hand:Number(b.hand) })),
+          used:(s.used && typeof s.used==='object' && !Array.isArray(s.used)) ? s.used : {}, armedCut:false, wonHand:false, coverFor:-1, coverBy:-1, seat:peerNum(s.seat) };
       };
       const prevChoice = G ? G.choiceOpen : false;
-      G = { seats:state.seats.map(revive), boss:null, handNo:state.handNo, bb:state.bb, street:state.street,
-        board:state.board||[], deck:[], button:state.button, phase:state.phase, handActive:state.handActive,
-        revealBoss:state.revealBoss, turnSeat:state.turnSeat, busy:false, choiceOpen:prevChoice,
-        pendingAction:null, over:state.over, logLines:state.logLines||[], activeHeroSeat:null };
+      G = { seats:state.seats.map(revive), boss:null, handNo:peerNum(state.handNo, 1), bb:peerNum(state.bb), street:peerNum(state.street),
+        board:Array.isArray(state.board) ? state.board.slice(0,5).map(peerCard) : [], deck:[], button:peerNum(state.button), phase:String(state.phase || ''), handActive:!!state.handActive,
+        revealBoss:!!state.revealBoss, turnSeat:peerNum(state.turnSeat, -1), busy:false, choiceOpen:prevChoice,
+        pendingAction:null, over:!!state.over, logLines:peerLogLines(state.logLines), activeHeroSeat:null };
       G.boss = G.seats[3];
       const el = $('#log');
-      el.innerHTML = G.logLines.slice(-60).map(l=>`<div class="${l.cls}">${l.msg}</div>`).join('');
+      el.innerHTML = G.logLines.map(l=>`<div class="${l.cls}">${esc(l.msg)}</div>`).join('');
       el.scrollTop = el.scrollHeight;
       render();
       if(!prevChoice && !NET.pendingDiceReq){
@@ -2116,7 +2200,8 @@
     function guestHandlePrompt(msg){
       if(msg.kind==='action'){
         const clsFor = v => v==='fold' ? 'btn-fold' : (v==='call' || v==='check') ? 'btn-call' : v==='bet' ? 'btn-bet' : 'btn-raise';
-        setAction(msg.title, (msg.buttons||[]).map(b=>({ label:b.label, cls:clsFor(b.value),
+        const ACT_OK = ['fold','check','call','bet','raise'];
+        setAction(peerRich(msg.title), (Array.isArray(msg.buttons) ? msg.buttons : []).filter(b=>b && ACT_OK.includes(b.value)).map(b=>({ label:peerRich(b.label), cls:clsFor(b.value),
           onClick:()=>{ netSendToHost({type:'res', reqId:msg.reqId, value:b.value}); setAction('送信しました。ホストの処理を待っています…', []); } })));
         if(window.innerWidth<=760){ const ta = document.querySelector('.table-area'); if(ta) ta.scrollIntoView({behavior:'smooth', block:'start'}); }
       } else if(msg.kind==='dice'){
@@ -2130,11 +2215,11 @@
         if(!G) return;
         G.choiceOpen = true;
         const root = $('#overlayRoot');
-        root.innerHTML = `<div class="backdrop"><div class="modal"><h2>${esc(msg.title)}</h2><div>${msg.text||''}</div><div class="opt-btns"></div></div></div>`;
+        root.innerHTML = `<div class="backdrop"><div class="modal"><h2>${esc(msg.title)}</h2><div>${peerRich(msg.text||'')}</div><div class="opt-btns"></div></div></div>`;
         const btns = root.querySelector('.opt-btns');
-        (msg.options||[]).forEach((op,i)=>{
+        (Array.isArray(msg.options) ? msg.options : []).forEach((op,i)=>{
           const b = document.createElement('button');
-          b.className = 'btn'; b.innerHTML = op.label;
+          b.className = 'btn'; b.innerHTML = peerRich(op && op.label);
           b.addEventListener('click', ()=>{ root.innerHTML=''; if(G) G.choiceOpen = false; netSendToHost({type:'res', reqId:msg.reqId, value:i}); });
           btns.appendChild(b);
         });
