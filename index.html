@@ -498,6 +498,20 @@
       .modal h2{ font-size:20px; margin-bottom:8px; }
       .modal .opt-btns{ display:flex; flex-direction:column; gap:8px; margin-top:12px; }
       .modal .opt-btns .btn{ text-align:left; min-height:48px; }
+      /* ---------- 対象選択ボタンのHP表示（僧侶の回復などで候補のHPをひと目で確認） ---------- */
+      .thp{ display:block; margin-top:6px; font-weight:700; }
+      .thp-line{ display:flex; justify-content:space-between; align-items:baseline; gap:10px; flex-wrap:wrap; font-size:13px; line-height:1.4; }
+      .thp-hp{ font-variant-numeric:tabular-nums; white-space:nowrap; }
+      .thp-miss{ color:var(--hp-low); font-weight:900; white-space:nowrap; }
+      .thp-full{ color:var(--accent2); font-weight:900; white-space:nowrap; }
+      .thp-bar{ display:block; height:8px; background:rgba(128,128,128,.28); border:1px solid var(--line); border-radius:999px; overflow:hidden; margin-top:4px; }
+      .thp-fill{ display:block; height:100%; background:var(--hp); }
+      .thp-fill.mid{ background:var(--hp-mid); } .thp-fill.low{ background:var(--hp-low); } .thp-fill.zero{ background:var(--hp-low); }
+      .thp-w0{ width:0%; } .thp-w5{ width:5%; } .thp-w10{ width:10%; } .thp-w15{ width:15%; } .thp-w20{ width:20%; }
+      .thp-w25{ width:25%; } .thp-w30{ width:30%; } .thp-w35{ width:35%; } .thp-w40{ width:40%; } .thp-w45{ width:45%; }
+      .thp-w50{ width:50%; } .thp-w55{ width:55%; } .thp-w60{ width:60%; } .thp-w65{ width:65%; } .thp-w70{ width:70%; }
+      .thp-w75{ width:75%; } .thp-w80{ width:80%; } .thp-w85{ width:85%; } .thp-w90{ width:90%; } .thp-w95{ width:95%; } .thp-w100{ width:100%; }
+      .thp-meta{ display:block; font-size:12px; font-weight:900; color:var(--accent); margin-top:3px; line-height:1.4; }
       .modal .rules-body{ font-size:14px; line-height:1.85; }
       .modal .rules-body ul{ padding-left:20px; margin:6px 0; }
       .result-big{ font-family:"Shippori Mincho B1",serif; font-size:34px; text-align:center; margin:8px 0; }
@@ -1486,9 +1500,34 @@
         });
       });
     }
+    /* 対象選択ボタン用のHP表示：名前（職業）＋現在HP／最大HP＋減っている量＋HPバー＋状態異常。
+       僧侶の「回復」「大回復」「蘇生」とユニークスキル「回復」の対象選択で使い、
+       回復先を選ぶ前に各候補のHPがひと目で分かるようにする（chooseOption経由なのでオンラインでも担当プレイヤーの画面に出る）。 */
+    function heroJobLabel(h){
+      return (h.name && h.def && h.name !== h.def.name) ? `${esc(h.name)}（${esc(h.def.name)}）` : esc(h.name);
+    }
+    function heroHpInfoHTML(h){
+      const max = h.maxHp || 20000;
+      const cur = Math.max(0, h.hp);
+      const missing = Math.max(0, max - cur);
+      const pct = max > 0 ? Math.round(cur / max * 100) : 0;
+      const w = Math.min(100, Math.max(0, Math.round(pct / 5) * 5));
+      const fillCls = 'thp-fill' + (hpClass(h) ? ' ' + hpClass(h) : '') + ' thp-w' + w + (cur <= 0 ? ' zero' : '');
+      const missHTML = cur <= 0
+        ? '<span class="thp-miss">HP 0 ― 戦闘不能</span>'
+        : (missing > 0 ? `<span class="thp-miss">-${fmt(missing)}</span>` : '<span class="thp-full">HP満タン</span>');
+      const status = [];
+      if(h.poison) status.push('毒');
+      if(h.confused) status.push('混乱');
+      const statusHTML = status.length ? `<span class="thp-meta">状態異常：${status.join('・')}</span>` : '';
+      return `<span class="thp"><span class="thp-line"><span class="thp-hp">HP ${fmt(cur)} / ${fmt(max)}</span>${missHTML}</span><span class="thp-bar"><span class="${fillCls}"></span></span>${statusHTML}</span>`;
+    }
+    function heroOptionLabel(h, suffix){
+      return `<b>${heroJobLabel(h)}</b>${suffix ? ' ' + suffix : ''}${heroHpInfoHTML(h)}`;
+    }
     async function chooseHero(title, text, filter){
       const list = heroes().map((h,i)=>({h,i})).filter(x=>filter(x.h));
-      const idx = await chooseOption(title, text, list.map(x=>({label:`<b>${esc(x.h.name)}</b>（HP ${fmt(x.h.hp)}）`})));
+      const idx = await chooseOption(title, text, list.map(x=>({label:heroOptionLabel(x.h, '')})));
       return list[idx].h;
     }
     function showModal(title, bodyHTML, btnLabel){
@@ -1920,8 +1959,8 @@
         } else {
           const options = [];
           heroes().filter(x=>x.hp>0).forEach(t=>{
-            options.push({ label:`<b>${esc(t.name)}</b> のHPを 3,000 回復`, run:()=>{ const real=healHero(t,3000); if(real > 0) playHealFX(t, real); log(`${esc(t.name)}のHPが ${fmt(real)} 回復した`, 'lg-good'); } });
-            if(t.poison || t.confused) options.push({ label:`<b>${esc(t.name)}</b> の状態異常を回復`, run:()=>{ const c=cureStatus(t); log(`${esc(t.name)}の状態異常（${c.join('・')}）が治った`, 'lg-good'); } });
+            options.push({ label:heroOptionLabel(t, 'のHPを 3,000 回復'), run:()=>{ const real=healHero(t,3000); if(real > 0) playHealFX(t, real); log(`${esc(t.name)}のHPが ${fmt(real)} 回復した`, 'lg-good'); } });
+            if(t.poison || t.confused) options.push({ label:heroOptionLabel(t, 'の状態異常を回復'), run:()=>{ const c=cureStatus(t); log(`${esc(t.name)}の状態異常（${c.join('・')}）が治った`, 'lg-good'); } });
           });
           const idx = await chooseOption('僧侶のユニークスキル「回復」', '単体 3,000回復 か 状態異常回復 のどちらかと、対象を選んでください', options);
           options[idx].run();
@@ -2351,11 +2390,19 @@
       return { hidden:true };
     }
     function peerRich(v){
-      /* 全体をエスケープした上で、表示専用の無害なタグ（b / small / span.who）だけを復元する */
-      return esc(String(v==null ? '' : v))
+      /* 全体をエスケープした上で、表示専用の無害なタグだけを復元する。
+         span はクラスがホワイトリスト（who／対象選択のHP表示 thp-* とバー幅 thp-w数値、色 mid/low/zero）だけで構成される場合のみ復元し、
+         ゲスト側でも回復対象のHPバー等がそのまま表示されるようにする。 */
+      const SPAN_OK = new Set(['who','thp','thp-line','thp-hp','thp-miss','thp-full','thp-bar','thp-fill','thp-meta','mid','low','zero']);
+      let s = esc(String(v==null ? '' : v))
         .replace(/&lt;b&gt;/g, '<b>').replace(/&lt;\/b&gt;/g, '</b>')
-        .replace(/&lt;small&gt;/g, '<small>').replace(/&lt;\/small&gt;/g, '</small>')
-        .replace(/&lt;span class=&quot;who&quot;&gt;/g, '<span class="who">').replace(/&lt;\/span&gt;/g, '</span>');
+        .replace(/&lt;small&gt;/g, '<small>').replace(/&lt;\/small&gt;/g, '</small>');
+      s = s.replace(/&lt;span class=&quot;([a-z0-9\- ]+)&quot;&gt;/g, (m, cls)=>{
+        const tokens = cls.trim().split(/\s+/).filter(Boolean);
+        if(tokens.length && tokens.every(t=>SPAN_OK.has(t) || /^thp-w\d+$/.test(t))) return `<span class="${cls}">`;
+        return m;
+      });
+      return s.replace(/&lt;\/span&gt;/g, '</span>');
     }
     function peerLogLines(lines){
       if(!Array.isArray(lines)) return [];
