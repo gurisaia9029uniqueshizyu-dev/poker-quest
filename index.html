@@ -435,7 +435,7 @@
         <div class="title-block">
           <div class="kicker">TEXAS HOLD'EM × TRPG</div>
           <h1>ポーカークエスト</h1>
-          <p>3人パーティでボスに挑む、フィックスリミットのホールデム討伐戦。ベットしたチップがそのまま攻撃力になる。負ければベット分だけHPを失い、勝てばベット分だけボスのHPを削る。味方同士のチップのやり取りはない――あるのは協力とスキルだけだ。</p>
+          <p>3人パーティでボスに挑む、フィックスリミットのホールデム討伐戦。ベットしたチップがそのまま攻撃力になる。負ければベット分だけHPを失い、勝てばベット分だけボスのHPを削る。味方同士のチップのやり取りはない――あるのは協力とスキルだけだ。ボスを倒せば、残りHPとノーマルスキルを持ち越して残りのボスへ連続で挑む連戦が始まる。</p>
         </div>
 
         <div class="mode-row">
@@ -490,7 +490,9 @@
         <div class="b-topbar">
           <div class="b-stats">
             <span class="b-chip">ハンド <b class="num" id="tbHand">-</b></span>
+            <span class="b-chip">討伐 <b class="num" id="tbBosses">0 / 3</b></span>
             <span class="b-chip">ブラインド <b class="num" id="tbBlind">-</b></span>
+            <span class="b-chip">次UPまで <b class="num" id="tbBlindTimer">--:--</b></span>
             <span class="b-chip">ベット <b class="num" id="tbBet">-</b></span>
             <span class="b-chip phase" id="tbPhase">準備中</span>
           </div>
@@ -589,7 +591,8 @@
     const RULES_HTML = `
       <ul>
         <li><b>目的：</b>3人パーティ（各HP 20,000）でボスのHPを0にすれば勝利。全員のHPが0になると敗北。</li>
-        <li><b>形式：</b>フィックスリミット・ホールデム。ブラインド500（SB 250）から始まり、4ハンドごとに+500。ベット額はプリフロップ＆フロップ＝ブラインド額、ターン＆リバー＝その2倍。1ストリート最大4ベット（ベット＋3レイズ）まで。</li>
+        <li><b>連続戦（ボス連戦）：</b>ボスを倒すと、そのまま残りのボスへ連続で挑める。次のボス戦へは<b>各ヒーローの残りHP（回復しない）とノーマルスキルの使用済み状態をそのまま持ち越す</b>（ノーマルスキルの「1回のみ」は連続戦全体を通しての制限）。<b>HP0のヒーローは戦闘不能のまま持ち越す</b>（僧侶の「蘇生」でのみ復帰できる）。ブラインドは次のボス戦では500から再開し、25分ごとのブラインドアップ・タイマーもリセットされる。<b>3体すべてのボスを倒すと完全制覇（完全クリア）</b>。途中で連続戦をやめてタイトルへ戻ることもできる。オンライン対戦でもホストの進行で同じように連続戦ができる。</li>
+        <li><b>形式：</b>フィックスリミット・ホールデム。ブラインド500（SB 250）から始まり、<b>対戦開始からの経過時間で25分ごとに+500ずつ上がっていく（最大3,000／本戦準拠の時間制）</b>。ハンドの途中で上がることはなく、次のハンドから新しいブラインドが適用される。画面上部に次のブラインドアップまでの残り時間（カウントダウン）を表示し、ブラインドアップ時はログと効果音で知らせる。ベット額はプリフロップ＆フロップ＝ブラインド額、ターン＆リバー＝その2倍。1ストリート最大4ベット（ベット＋3レイズ）まで。</li>
         <li><b>ダメージ計算：</b>味方同士のチップ移動はない。各ヒーローはボスと個別勝負し、<b>勝てば自分のベット総額ぶんボスにダメージ、負ければベット総額ぶん自分のHPを失う</b>。フォールドした場合もベット分は失う。ボスがフォールドしたら、残っていた全員がベット分ダメージを与える。引き分けはダメージなし。</li>
         <li><b>ボスのユニークスキル：</b>発動タイミングはボスごとに異なる。<b>大魔導士</b>は「連続攻撃（連携攻撃）」を持つため、<b>毎ハンド開始前</b>にダイスを振って発動する。<b>キメラ（毒＆混乱）とゴーレム（強攻撃）</b>はハンド開始前には発動せず、<b>ボスがそのハンドに勝利した時にだけ</b>ダイスを振って発動する（ボスの勝利＝ショーダウンで残っていた全員にボスが勝つか、ヒーロー全員がフォールドした時）。</li>
         <li><b>ハンド開始時：</b>まず毒のダメージを受ける（大魔導士の場合は続けてそのユニークスキルも発動する）。</li>
@@ -805,7 +808,35 @@
     }
     function heroes(){ return G.seats.slice(0,3); }
     function livingHeroes(){ return heroes().filter(h=>h.hp>0); }
-    function bbNow(){ return Math.min(500 + 500*Math.floor((G.handNo-1)/4), 3000); }
+    /* ブラインドは時間制（本戦準拠）：対戦開始から25分ごとに+500、最大3,000。
+       ハンドの途中で上がることはなく、各ハンド開始時に経過時間から決まる。 */
+    const BLIND_INTERVAL_MS = 25 * 60 * 1000;
+    function bbForLevel(lv){ return Math.min(500 + 500 * Math.max(0, lv), 3000); }
+    function blindLevelNow(){
+      if(!G || !G.battleStartAt) return 0;
+      return Math.floor((Date.now() - G.battleStartAt) / BLIND_INTERVAL_MS);
+    }
+    function bbNow(){ return bbForLevel(blindLevelNow()); }
+    let blindTicker = null;
+    function updateBlindTimerDisplay(){
+      const el = $('#tbBlindTimer'); if(!el) return;
+      if(!G){ el.textContent = '--:--'; return; }
+      let remainMs = null;
+      if(window.NET && NET.role==='guest'){
+        if(G.blindMaxed){ el.textContent = '最大'; return; }
+        if(G.blindDeadline) remainMs = G.blindDeadline - Date.now();
+      } else if(G.battleStartAt){
+        const lv = blindLevelNow();
+        if(bbForLevel(lv) >= 3000){ el.textContent = '最大'; return; }
+        remainMs = (lv + 1) * BLIND_INTERVAL_MS - (Date.now() - G.battleStartAt);
+      }
+      if(remainMs == null){ el.textContent = '--:--'; return; }
+      if(remainMs < 0) remainMs = 0;
+      const s = Math.ceil(remainMs / 1000);
+      el.textContent = String(Math.floor(s / 60)).padStart(2, '0') + ':' + String(s % 60).padStart(2, '0');
+    }
+    function startBlindTicker(){ stopBlindTicker(); blindTicker = setInterval(updateBlindTimerDisplay, 500); updateBlindTimerDisplay(); }
+    function stopBlindTicker(){ if(blindTicker){ clearInterval(blindTicker); blindTicker = null; } }
     function betSize(){ return G.street<2 ? G.bb : G.bb*2; }
     function checkEnd(){
       if(G.over) return true;
@@ -881,6 +912,8 @@
     function render(){
       if(!G) return;
       $('#tbHand').textContent = G.handNo;
+      const tbB = $('#tbBosses'); if(tbB) tbB.textContent = ((G.defeated||[]).length) + ' / ' + BOSS_DEFS.length;
+      updateBlindTimerDisplay();
       $('#tbBlind').textContent = fmt(G.bb) + '（SB ' + fmt(G.bb/2) + '）';
       $('#tbBet').textContent = fmt(G.bb) + ' / ' + fmt(G.bb*2);
       const phases = { start:'ハンド開始', bossSkill:'ボスのスキル', betting:['プリフロップ','フロップ','ターン','リバー'][G.street]||'', resolve:'ショーダウン', handEnd:'ハンド終了', over:'決着' };
@@ -1308,6 +1341,14 @@
       });
       G.board = [];
       log(`――― ハンド ${G.handNo} 開始（ブラインド ${fmt(G.bb)}） ―――`, 'lg-sys');
+      const lvNow = blindLevelNow();
+      if(lvNow > (G.blindLevel || 0)){
+        G.blindLevel = lvNow;
+        log(`ブラインドアップ！ 25分経過でブラインドが ${fmt(G.bb)} になった`, 'lg-sys');
+        SFX.skill();
+      } else {
+        G.blindLevel = lvNow;
+      }
       render(); await sleep(500);
 
       /* 毒ダメージ */
@@ -1725,39 +1766,121 @@
     /* ================= 勝敗 ================= */
     function gameOver(win){
       G.over = true; G.phase='over'; G.handActive=false; G.turnSeat=-1;
-      render();
       if(win){
+        /* 連続戦の記録：撃破済みボスと、持ち越し（残りHP＋ノーマルスキル使用済み）を確定させる */
+        if(!Array.isArray(G.defeated)) G.defeated = [];
+        if(!G.defeated.includes(G.boss.id)) G.defeated.push(G.boss.id);
+        G.carry = heroes().map(h=>({ defId:h.def.id, name:h.name, hp:Math.max(0,h.hp), used:Object.assign({}, h.used||{}) }));
+        const remaining = BOSS_DEFS.map((b,i)=>i).filter(i=>!G.defeated.includes(BOSS_DEFS[i].id));
+        G.gauntletComplete = remaining.length===0;
+        render();
         SFX.bossDown(); SFX.win();
-        log(`ボスを倒した！ パーティの勝利！（${G.handNo} ハンドで討伐）`, 'lg-good');
-        setAction('クエストクリア！', [
-          { label:'タイトルへ戻る', cls:'btn-next', onClick:showStart },
-        ]);
-        showModal('討伐成功！', `<div class="result-big">VICTORY</div><p>${esc(G.boss.name)}を ${G.handNo} ハンドで倒しました。残ったパーティのHP合計は ${fmt(heroes().reduce((a,h)=>a+h.hp,0))} です。</p>`, '閉じる');
+        log(`ボスを倒した！ パーティの勝利！（${G.handNo} ハンドで討伐／連続戦 ${G.defeated.length} 体撃破）`, 'lg-good');
+        if(G.gauntletComplete){
+          log('3体すべてのボスを倒した！ 完全制覇！', 'lg-good');
+          setAction('全ボス制覇！ 完全クリア！', [
+            { label:'タイトルへ戻る', cls:'btn-next', onClick:endCampaign },
+          ]);
+          showModal('完全制覇！', `<div class="result-big">COMPLETE CLEAR</div><p>3体すべてのボスを倒し切りました！ 最後の ${esc(G.boss.name)} は ${G.handNo} ハンドで討伐。残ったパーティのHP合計は ${fmt(heroes().reduce((a,h)=>a+h.hp,0))} です。</p>`, '閉じる');
+        } else {
+          setAction('ボス撃破！ 連続戦を続けますか？', [
+            ...remaining.map(i=>({ label:`次のボス：${BOSS_DEFS[i].name}に挑む`, cls:'btn-next', onClick:()=>startNextBoss(i) })),
+            { label:'連続戦を終了してタイトルへ', cls:'', onClick:endCampaign },
+          ]);
+          showGauntletVictoryModal(remaining);
+        }
       } else {
+        render();
         SFX.lose();
         log('パーティは全滅した…', 'lg-boss');
         setAction('全滅…', [
-          { label:'タイトルへ戻る', cls:'btn-next', onClick:showStart },
+          { label:'タイトルへ戻る', cls:'btn-next', onClick:endCampaign },
         ]);
-        showModal('全滅…', `<div class="result-big">GAME OVER</div><p>${esc(G.boss.name)}の残りHPは ${fmt(G.boss.hp)} でした。あと一歩のところで力尽きました。</p>`, '閉じる');
+        const progress = (G.defeated && G.defeated.length) ? `<p>連続戦は ${G.defeated.length} 体撃破で終了しました。</p>` : '';
+        showModal('全滅…', `<div class="result-big">GAME OVER</div><p>${esc(G.boss.name)}の残りHPは ${fmt(G.boss.hp)} でした。あと一歩のところで力尽きました。</p>${progress}`, '閉じる');
       }
+    }
+    /* 撃破後の勝利画面：持ち越し内容を示し、残りのボスから次の相手を選べる */
+    function showGauntletVictoryModal(remaining){
+      const root = $('#overlayRoot');
+      const hpLines = (G.carry||[]).map(c=>{
+        const usedCount = Object.keys(c.used||{}).filter(k=>c.used[k]).length;
+        return `<li><b>${esc(c.name)}</b>：残りHP ${fmt(c.hp)}${c.hp<=0?'（戦闘不能のまま持ち越し）':''}／ノーマルスキル使用済み ${usedCount} 個</li>`;
+      }).join('');
+      root.innerHTML = `<div class="backdrop"><div class="modal">
+        <h2>討伐成功！</h2>
+        <div class="rules-body"><div class="result-big">VICTORY</div>
+        <p>${esc(G.boss.name)}を ${G.handNo} ハンドで倒しました（連続戦 ${G.defeated.length} / ${BOSS_DEFS.length} 体撃破）。</p>
+        <p><b>連続戦：</b>残りHPとノーマルスキルの使用済み状態はそのまま持ち越しです（回復しません）。ブラインドは500から再開し、25分タイマーもリセットされます。次に挑むボスを選んでください。</p>
+        <ul>${hpLines}</ul></div>
+        <div class="opt-btns"></div></div></div>`;
+      const btns = root.querySelector('.opt-btns');
+      remaining.forEach(i=>{
+        const b = document.createElement('button');
+        b.className = 'btn btn-primary';
+        b.innerHTML = `次のボスに挑む：<b>${esc(BOSS_DEFS[i].name)}</b>（HP ${fmt(BOSS_DEFS[i].hp)}）`;
+        b.addEventListener('click', ()=>startNextBoss(i));
+        btns.appendChild(b);
+      });
+      const end = document.createElement('button');
+      end.className = 'btn';
+      end.textContent = '連続戦をやめてタイトルへ戻る';
+      end.addEventListener('click', ()=>{ root.innerHTML=''; endCampaign(); });
+      btns.appendChild(end);
+    }
+    /* 次のボス戦へ：HPとノーマルスキル使用済みを持ち越し、ブラインドは初期値から */
+    function startNextBoss(bossIdx){
+      if(!G || !G.carry) return;
+      const carry = G.carry;
+      const defeated = (G.defeated||[]).slice();
+      $('#overlayRoot').innerHTML = '';
+      if(window.NET && NET.role==='host') netSendAll({type:'start'});
+      startBattle(bossIdx, carry, defeated);
+    }
+    /* 連続戦を終了してタイトルへ（オンライン時はゲストにも終了を通知） */
+    function endCampaign(){
+      if(window.NET && NET.role==='host'){
+        netSendAll({type:'gauntletEnd', complete:!!(G && G.gauntletComplete)});
+        if(typeof netLeave==='function') netLeave();
+      }
+      showStart();
     }
 
     /* ================= 開始／画面遷移 ================= */
-    function startBattle(){
+    function startBattle(nextBossIdx, carry, defeatedSoFar){
       preloadSfxFiles();
-      const def = BOSS_DEFS[selectedBoss];
-      const hs = window.ONLINE_PARTY
-        ? window.ONLINE_PARTY.map(p=>{ const h = mkHero(p.def); h.name = p.name; return h; })
-        : HERO_DEFS.map(mkHero);
+      const bossIdx = (typeof nextBossIdx==='number' && BOSS_DEFS[nextBossIdx]) ? nextBossIdx : selectedBoss;
+      const def = BOSS_DEFS[bossIdx];
+      selectedBoss = bossIdx;
+      let hs;
+      if(Array.isArray(carry) && carry.length===3){
+        /* 連続戦の持ち越し：残りHPとノーマルスキル使用済みを引き継ぐ（HP0は戦闘不能のまま） */
+        hs = carry.map(c=>{
+          const hd = HERO_DEFS.find(d=>d.id===c.defId) || HERO_DEFS[0];
+          const h = mkHero(hd);
+          h.name = String(c.name || hd.name).slice(0, 24);
+          const hpN = Number(c.hp);
+          h.hp = Number.isFinite(hpN) ? Math.max(0, Math.min(h.maxHp, hpN)) : h.maxHp;
+          h.used = (c.used && typeof c.used==='object' && !Array.isArray(c.used)) ? Object.assign({}, c.used) : {};
+          return h;
+        });
+      } else if(window.ONLINE_PARTY){
+        hs = window.ONLINE_PARTY.map(p=>{ const h = mkHero(p.def); h.name = p.name; return h; });
+      } else {
+        hs = HERO_DEFS.map(mkHero);
+      }
       hs.forEach((h,i)=>{ h.seat=i; });
       G = {
         seats:[...hs, mkBoss(def)], boss:null, handNo:1, bb:500, street:0,
         board:[], deck:[], button:3, phase:'start', handActive:false,
         revealBoss:false, turnSeat:-1, busy:false, choiceOpen:false,
         pendingAction:null, over:false, logLines:[], activeHeroSeat:null,
+        defeated:Array.isArray(defeatedSoFar) ? defeatedSoFar.slice() : [],
+        carry:null, gauntletComplete:false,
+        battleStartAt:Date.now(), blindLevel:0, blindDeadline:null, blindMaxed:false,
       };
       G.boss = G.seats[3];
+      startBlindTicker();
       $('#startScreen').classList.add('hidden');
       $('#battleScreen').classList.remove('hidden');
       $('#log').innerHTML='';
@@ -1766,11 +1889,18 @@
       $('#diceRollBtn').classList.add('hidden');
       $('#diceTray').classList.remove('await-roll');
       log(`${esc(def.name)}（HP ${fmt(def.hp)}）が現れた！`, 'lg-boss');
-      log('パーティ全員のHPは 20,000。ボスのHPを0にすれば勝利', 'lg-sys');
+      if(Array.isArray(carry) && carry.length===3){
+        log(`連続戦 ${(G.defeated.length+1)} 戦目！ ブラインドと25分タイマーはリセットされ、ブラインド500から再開`, 'lg-sys');
+        log(`持ち越しHP：${hs.map(h=>`${esc(h.name)} ${fmt(h.hp)}${h.hp<=0?'（戦闘不能）':''}`).join(' ／ ')}。ノーマルスキルの使用済みも持ち越し`, 'lg-sys');
+      } else {
+        log('パーティ全員のHPは 20,000。ボスのHPを0にすれば勝利', 'lg-sys');
+      }
+      log('ブラインドは対戦開始から25分ごとにアップする（本戦準拠）', 'lg-sys');
       render();
       playHand();
     }
     function showStart(){
+      stopBlindTicker();
       G = null;
       $('#battleScreen').classList.add('hidden');
       $('#startScreen').classList.remove('hidden');
@@ -1899,9 +2029,17 @@
         inHand:p.inHand, folded:p.folded, committed:p.committed, lastAction:p.lastAction,
         poison:!!p.poison, confused:!!p.confused, buffs:p.buffs||[], used:p.used||{}, seat:p.seat,
       });
+      let blindRemainSec = null, blindMaxed = false;
+      if(G.battleStartAt){
+        const lv = blindLevelNow();
+        if(bbForLevel(lv) >= 3000) blindMaxed = true;
+        else blindRemainSec = Math.max(0, Math.ceil(((lv + 1) * BLIND_INTERVAL_MS - (Date.now() - G.battleStartAt)) / 1000));
+      }
       return { seats:G.seats.map(ss), handNo:G.handNo, bb:G.bb, street:G.street, phase:G.phase,
         handActive:G.handActive, revealBoss:G.revealBoss, turnSeat:G.turnSeat, button:G.button,
-        board:G.board, over:G.over, logLines:G.logLines.slice(-60) };
+        board:G.board, over:G.over, logLines:G.logLines.slice(-60),
+        defeated:(G.defeated || []).slice(), gauntletComplete:!!G.gauntletComplete,
+        blindRemainSec, blindMaxed };
     }
     function netBroadcastState(){
       if(NET.role!=='host' || !G) return;
@@ -2121,6 +2259,12 @@
         else netStatus('接続エラーが発生しました（' + (err && err.type ? err.type : 'unknown') + '）。', true);
       });
     }
+    function guestCampaignEnd(complete){
+      if(NET.role!=='guest' || NET.hostGoneHandled) return;
+      NET.hostGoneHandled = true;
+      showModal('連続戦終了', complete ? '<p>全ボス制覇！ 完全クリアです。対戦は終了します。</p>' : '<p>ホストが連続戦を終了しました。対戦は終了します。</p>', 'タイトルへ戻る')
+        .then(()=>{ netLeave(); showStart(); });
+    }
     function guestHostGone(){
       if(NET.role!=='guest' || NET.hostGoneHandled) return;
       NET.hostGoneHandled = true;
@@ -2143,6 +2287,9 @@
         $('#guestLobbyList').innerHTML = lobbyListHTML(NET.lobby, NET.mySeat);
       } else if(msg.type==='start'){
         NET.started = true;
+        NET.hostGoneHandled = false;
+        $('#overlayRoot').innerHTML = '';
+        startBlindTicker();
         $('#startScreen').classList.add('hidden');
         $('#battleScreen').classList.remove('hidden');
         $('#log').innerHTML = '';
@@ -2164,6 +2311,8 @@
         if(G && G.seats[msg.seat]) playHealFX(G.seats[msg.seat], msg.amt);
       } else if(msg.type==='fxConfusion'){
         if(G && G.seats[msg.attackerSeat] && G.seats[msg.targetSeat]) playConfusionHitFX(G.seats[msg.attackerSeat], G.seats[msg.targetSeat], msg.dmg);
+      } else if(msg.type==='gauntletEnd'){
+        guestCampaignEnd(!!msg.complete);
       } else if(msg.type==='hostLeft'){
         guestHostGone();
       }
@@ -2184,7 +2333,13 @@
       G = { seats:state.seats.map(revive), boss:null, handNo:peerNum(state.handNo, 1), bb:peerNum(state.bb), street:peerNum(state.street),
         board:Array.isArray(state.board) ? state.board.slice(0,5).map(peerCard) : [], deck:[], button:peerNum(state.button), phase:String(state.phase || ''), handActive:!!state.handActive,
         revealBoss:!!state.revealBoss, turnSeat:peerNum(state.turnSeat, -1), busy:false, choiceOpen:prevChoice,
-        pendingAction:null, over:!!state.over, logLines:peerLogLines(state.logLines), activeHeroSeat:null };
+        pendingAction:null, over:!!state.over, logLines:peerLogLines(state.logLines), activeHeroSeat:null,
+        defeated:(Array.isArray(state.defeated) ? state.defeated : []).filter(id=>BOSS_DEFS.some(b=>b.id===id)),
+        gauntletComplete:!!state.gauntletComplete, carry:null,
+        battleStartAt:null, blindLevel:0,
+        blindDeadline:(typeof state.blindRemainSec==='number' && Number.isFinite(state.blindRemainSec)) ? Date.now() + state.blindRemainSec * 1000 : null,
+        blindMaxed:!!state.blindMaxed };
+      if(!blindTicker) startBlindTicker();
       G.boss = G.seats[3];
       const el = $('#log');
       el.innerHTML = G.logLines.map(l=>`<div class="${l.cls}">${esc(l.msg)}</div>`).join('');
@@ -2192,7 +2347,10 @@
       render();
       if(!prevChoice && !NET.pendingDiceReq){
         if(state.phase==='handEnd') setAction('ハンド終了 ― ホストが次のハンドへ進めます', []);
-        else if(state.over) setAction('対戦終了', []);
+        else if(state.over){
+          if(G.boss && G.boss.hp<=0) setAction(G.gauntletComplete ? '全ボス制覇！ 完全クリア！' : 'ボス撃破！ ホストが次のボスを選んでいます…', []);
+          else setAction('対戦終了', []);
+        }
         else if(state.turnSeat>=0 && state.turnSeat!==NET.mySeat && state.phase==='betting')
           setAction(`<span class="who">${esc(G.seats[state.turnSeat].name)}</span> のターンです`, []);
       }
