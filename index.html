@@ -578,7 +578,7 @@
             <span class="b-chip">ハンド <b class="num" id="tbHand">-</b></span>
             <span class="b-chip">討伐 <b class="num" id="tbBosses">0 / 3</b></span>
             <span class="b-chip">ブラインド：<b class="num" id="tbBlind">-</b></span>
-            <span class="b-chip">次UPまで <b class="num" id="tbBlindTimer">--:--</b></span>
+            <span class="b-chip"><b class="num" id="tbBlindNext">あと4ハンドでブラインドアップ</b></span>
             <span class="b-chip">ベット <b class="num" id="tbBet">-</b></span>
             <span class="b-chip phase" id="tbPhase">準備中</span>
           </div>
@@ -687,8 +687,8 @@
     const RULES_HTML = `
       <ul>
         <li><b>目的：</b>3人パーティ（各HP 20,000）でボスのHPを0にすれば勝利。全員のHPが0になると敗北。</li>
-        <li><b>連続戦（ボス連戦）：</b>ボスを倒すと、そのまま残りのボスへ連続で挑める。次のボス戦へは<b>各ヒーローの残りHP（回復しない）とノーマルスキルの使用済み状態をそのまま持ち越す</b>（ノーマルスキルの「1回のみ」は連続戦全体を通しての制限）。<b>HP0のヒーローは戦闘不能のまま持ち越す</b>（僧侶の「蘇生」でのみ復帰できる）。ブラインドは次のボス戦では500から再開し、25分ごとのブラインドアップ・タイマーもリセットされる。<b>3体すべてのボスを倒すと完全制覇（完全クリア）</b>。途中で連続戦をやめてタイトルへ戻ることもできる。オンライン対戦でもホストの進行で同じように連続戦ができる。</li>
-        <li><b>形式：</b>フィックスリミット・ホールデム。<b>ブラインドはSB／BBに分かれず1種類のみ</b>で、表示は「ブラインド：500」のようになる。<b>SBポジションのプレイヤーがブラインド全額を支払う</b>（BBポジションは支払わない）。ブラインドは500から始まり、<b>対戦開始からの経過時間で25分ごとに 500 → 1,000 → 2,000 → 3,000 と上がっていく（本戦準拠の時間制）</b>。ハンドの途中で上がることはなく、次のハンドから新しいブラインドが適用される。画面上部に次のブラインドアップまでの残り時間（カウントダウン）を表示し、ブラインドアップ時はログと効果音で知らせる。ベット額はプリフロップ＆フロップ＝ブラインド額（スモールベット）、ターン＆リバー＝その2倍（ビッグベット）。<b>レイズは1ストリート最大5ベットまで</b>（ブラインド500ならプリフロップ／フロップは最大2,500まで、ターン／リバーはビッグベット基準で最大5,000まで）。</li>
+        <li><b>連続戦（ボス連戦）：</b>ボスを倒すと、そのまま残りのボスへ連続で挑める。次のボス戦へは<b>各ヒーローの残りHP（回復しない）とノーマルスキルの使用済み状態をそのまま持ち越す</b>（ノーマルスキルの「1回のみ」は連続戦全体を通しての制限）。<b>HP0のヒーローは戦闘不能のまま持ち越す</b>（僧侶の「蘇生」でのみ復帰できる）。ブラインドは次のボス戦では500から再開し、ハンド数もリセットされる（4ハンドごとにアップ）。<b>3体すべてのボスを倒すと完全制覇（完全クリア）</b>。途中で連続戦をやめてタイトルへ戻ることもできる。オンライン対戦でもホストの進行で同じように連続戦ができる。</li>
+        <li><b>形式：</b>フィックスリミット・ホールデム。<b>ブラインドはSB／BBに分かれず1種類のみ</b>で、表示は「ブラインド：500」のようになる。<b>SBポジションのプレイヤーがブラインド全額を支払う</b>（BBポジションは支払わない）。ブラインドは500から始まり、<b>4ハンドごとに 500 → 1,000 → 2,000 → 3,000 と上がっていく</b>（1〜4ハンド目：500／5〜8ハンド目：1,000／9〜12ハンド目：2,000／13ハンド目以降：3,000が上限）。ハンド数はボス戦ごとに数え、連続戦で次のボスに移るとリセットされる。画面上部にあと何ハンドでブラインドアップするかを表示し、ブラインドアップ時はハンド開始時にログと効果音で知らせる。ベット額はプリフロップ＆フロップ＝ブラインド額（スモールベット）、ターン＆リバー＝その2倍（ビッグベット）。<b>レイズは1ストリート最大5ベットまで</b>（ブラインド500ならプリフロップ／フロップは最大2,500まで、ターン／リバーはビッグベット基準で最大5,000まで）。</li>
         <li><b>プレイの順番（ホールデム正式手順）：</b>アクションは<b>ボタン（ディーラー）を基準に時計回り</b>に進む。席配置での時計回りは「ボス（上）→右のヒーロー→中央のヒーロー→左のヒーロー」の順。<b>SBはボタンの左隣、その次がBB</b>で、カードはSBから時計回りに配られる。<b>ハンド開始時はSBがブラインドを支払った状態で、プリフロップはBBポジションから</b>時計回りに行動する（例：ブラインド500の場合、BBはフォールド／コール500／レイズ1,000までを選べる。SBの支払ったブラインドが最初の1ベットとして数えられる）。<b>ポストフロップ（フロップ以降）はボタンの左隣の生存者から</b>時計回りに行動する。<b>ボタンはハンドごとに時計回りに1席移動</b>する。各席には BTN／SB／BB のバッジが表示される。</li>
         <li><b>ダメージ計算：</b>味方同士のチップ移動はない。各ヒーローはボスと個別勝負し、<b>勝てば自分のベット総額ぶんボスにダメージ、負ければベット総額ぶん自分のHPを失う</b>。フォールドした場合もベット分は失う。ボスがフォールドしたら、残っていた全員がベット分ダメージを与える。引き分けはダメージなし。</li>
         <li><b>ボスのユニークスキル：</b>発動タイミングはボスごとに異なる。<b>大魔導士</b>は「連続攻撃（連携攻撃）」を持つため、<b>毎ハンド開始前</b>にダイスを振って発動する。ただし<b>対戦の1ハンド目だけは振らない</b>（連続戦で大魔導士と戦う場合も、その対戦の1ハンド目が対象で、2ハンド目以降は従来通り毎ハンド開始前に振る）。ボタンがボスのハンドでも開始前の発動は1回のみで二重にはならず、<b>1ハンド目はボタンがボスでも開始前ロールはしない</b>。<b>キメラ（毒＆混乱）とゴーレム（強攻撃）</b>は、<b>ボタン（BTN）がボスに回ってきたハンドのハンド開始前にだけ</b>ダイスを振って発動する。<b>ボスがハンドに勝利しても発動しない</b>（勝利時発動は廃止）。ボタンがヒーロー席のハンドでは発動しない。発動時の解決（ダイスは手動ロールで、対象決定やダメージ・毒・混乱の適用、弓使い「陽動」などの反応）は従来の開始前発動と同じ流れ。</li>
@@ -1013,38 +1013,37 @@
       while(!active.includes(s)) s = nextClockwise(s);
       return s;
     }
-    /* ブラインドは時間制（本戦準拠）：対戦開始から25分ごとに
-       500 → 1,000 → 2,000 → 3,000 と上がる。
-       ハンドの途中で上がることはなく、各ハンド開始時に経過時間から決まる。
+    /* ブラインドは4ハンドごと：ボス戦ごとのハンド数で決まる。
+       1〜4ハンド目：500／5〜8ハンド目：1,000／9〜12ハンド目：2,000／13ハンド目以降：3,000（上限）。
+       ハンド数はボス戦ごとに数え、連続戦で次のボスに移ると handNo が1に戻りリセットされる。
        ブラインドは1種類のみで、SBポジションのプレイヤーが全額を支払う。 */
-    const BLIND_INTERVAL_MS = 25 * 60 * 1000;
     const BLIND_LEVELS = [500, 1000, 2000, 3000];
+    const BLIND_HANDS_PER_LEVEL = 4;
     function bbForLevel(lv){ return BLIND_LEVELS[Math.min(Math.max(0, lv), BLIND_LEVELS.length - 1)]; }
+    function blindLevelForHand(handNo){
+      const h = Math.max(1, Math.floor(Number(handNo) || 1));
+      return Math.floor((h - 1) / BLIND_HANDS_PER_LEVEL);
+    }
     function blindLevelNow(){
-      if(!G || !G.battleStartAt) return 0;
-      return Math.floor((Date.now() - G.battleStartAt) / BLIND_INTERVAL_MS);
+      if(!G) return 0;
+      return Math.min(blindLevelForHand(G.handNo), BLIND_LEVELS.length - 1);
     }
     function bbNow(){ return bbForLevel(blindLevelNow()); }
-    let blindTicker = null;
-    function updateBlindTimerDisplay(){
-      const el = $('#tbBlindTimer'); if(!el) return;
-      if(!G){ el.textContent = '--:--'; return; }
-      let remainMs = null;
-      if(window.NET && NET.role==='guest'){
-        if(G.blindMaxed){ el.textContent = '最大'; return; }
-        if(G.blindDeadline) remainMs = G.blindDeadline - Date.now();
-      } else if(G.battleStartAt){
-        const lv = blindLevelNow();
-        if(bbForLevel(lv) >= 3000){ el.textContent = '最大'; return; }
-        remainMs = (lv + 1) * BLIND_INTERVAL_MS - (Date.now() - G.battleStartAt);
-      }
-      if(remainMs == null){ el.textContent = '--:--'; return; }
-      if(remainMs < 0) remainMs = 0;
-      const s = Math.ceil(remainMs / 1000);
-      el.textContent = String(Math.floor(s / 60)).padStart(2, '0') + ':' + String(s % 60).padStart(2, '0');
+    function handsUntilBlindUp(){
+      if(!G) return null;
+      const lvRaw = blindLevelForHand(G.handNo);
+      if(lvRaw >= BLIND_LEVELS.length - 1) return null;
+      const h = Math.max(1, Math.floor(Number(G.handNo) || 1));
+      const nextLevelFirstHand = (lvRaw + 1) * BLIND_HANDS_PER_LEVEL + 1;
+      return nextLevelFirstHand - h;
     }
-    function startBlindTicker(){ stopBlindTicker(); blindTicker = setInterval(updateBlindTimerDisplay, 500); updateBlindTimerDisplay(); }
-    function stopBlindTicker(){ if(blindTicker){ clearInterval(blindTicker); blindTicker = null; } }
+    function updateBlindDisplay(){
+      const el = $('#tbBlindNext'); if(!el) return;
+      if(!G){ el.textContent = 'あと4ハンドでブラインドアップ'; return; }
+      const remain = handsUntilBlindUp();
+      if(remain == null){ el.textContent = 'ブラインドは最大'; return; }
+      el.textContent = 'あと' + remain + 'ハンドでブラインドアップ';
+    }
     /* ベットサイズ（フィックスリミット）：プリフロップ＆フロップ＝ブラインド額（スモールベット）、
        ターン＆リバー＝その2倍（ビッグベット）。例：ブラインド500ならベット500／ターン以降は1,000、レイズは2,000まで上がる形になる */
     function betSize(){ return G.street<2 ? G.bb : G.bb*2; }
@@ -1132,7 +1131,7 @@
       if(!G) return;
       $('#tbHand').textContent = G.handNo;
       const tbB = $('#tbBosses'); if(tbB) tbB.textContent = ((G.defeated||[]).length) + ' / ' + BOSS_DEFS.length;
-      updateBlindTimerDisplay();
+      updateBlindDisplay();
       $('#tbBlind').textContent = fmt(G.bb);
       $('#tbBet').textContent = fmt(G.bb) + ' / ' + fmt(G.bb*2);
       const phases = { start:'ハンド開始', bossSkill:'ボスのスキル', betting:['プリフロップ','フロップ','ターン','リバー'][G.street]||'', resolve:'ショーダウン', handEnd:'ハンド終了', over:'決着' };
@@ -1593,7 +1592,7 @@
       const lvNow = blindLevelNow();
       if(lvNow > (G.blindLevel || 0)){
         G.blindLevel = lvNow;
-        log(`ブラインドアップ！ 25分経過でブラインドが ${fmt(G.bb)} になった`, 'lg-sys');
+        log(`ブラインドアップ！ 4ハンド経過でブラインドが ${fmt(G.bb)} になった`, 'lg-sys');
         SFX.skill();
       } else {
         G.blindLevel = lvNow;
@@ -2157,7 +2156,7 @@
         <h2>討伐成功！</h2>
         <div class="rules-body"><div class="result-big">VICTORY</div>
         <p>${esc(G.boss.name)}を ${G.handNo} ハンドで倒しました（連続戦 ${G.defeated.length} / ${BOSS_DEFS.length} 体撃破）。</p>
-        <p><b>連続戦：</b>残りHPとノーマルスキルの使用済み状態はそのまま持ち越しです（回復しません）。ブラインドは500から再開し、25分タイマーもリセットされます。次に挑むボスを選んでください。</p>
+        <p><b>連続戦：</b>残りHPとノーマルスキルの使用済み状態はそのまま持ち越しです（回復しません）。ブラインドは500から再開し、ハンド数もリセットされます（4ハンドごとにアップ）。次に挑むボスを選んでください。</p>
         <ul>${hpLines}</ul></div>
         <div class="opt-btns"></div></div></div>`;
       const btns = root.querySelector('.opt-btns');
@@ -2224,10 +2223,9 @@
         pendingAction:null, over:false, logLines:[], activeHeroSeat:null,
         defeated:Array.isArray(defeatedSoFar) ? defeatedSoFar.slice() : [],
         carry:null, gauntletComplete:false,
-        battleStartAt:Date.now(), blindLevel:0, blindDeadline:null, blindMaxed:false,
+        blindLevel:0,
       };
       G.boss = G.seats[3];
-      startBlindTicker();
       $('#startScreen').classList.add('hidden');
       $('#battleScreen').classList.remove('hidden');
       $('#log').innerHTML='';
@@ -2237,17 +2235,16 @@
       $('#diceTray').classList.remove('await-roll');
       log(`${esc(def.name)}（HP ${fmt(def.hp)}）が現れた！`, 'lg-boss');
       if(Array.isArray(carry) && carry.length===3){
-        log(`連続戦 ${(G.defeated.length+1)} 戦目！ ブラインドと25分タイマーはリセットされ、ブラインド500から再開`, 'lg-sys');
+        log(`連続戦 ${(G.defeated.length+1)} 戦目！ ハンド数とブラインドはリセットされ、ブラインド500から再開`, 'lg-sys');
         log(`持ち越しHP：${hs.map(h=>`${esc(h.name)} ${fmt(h.hp)}${h.hp<=0?'（戦闘不能）':''}`).join(' ／ ')}。ノーマルスキルの使用済みも持ち越し`, 'lg-sys');
       } else {
         log('パーティ全員のHPは 20,000。ボスのHPを0にすれば勝利', 'lg-sys');
       }
-      log('ブラインドは対戦開始から25分ごとに 500 → 1,000 → 2,000 → 3,000 とアップする（本戦準拠）。SBポジションがブラインド全額を支払う', 'lg-sys');
+      log('ブラインドは4ハンドごとに 500 → 1,000 → 2,000 → 3,000 とアップする。SBポジションがブラインド全額を支払う', 'lg-sys');
       render();
       playHand();
     }
     function showStart(){
-      stopBlindTicker();
       G = null;
       $('#battleScreen').classList.add('hidden');
       $('#startScreen').classList.remove('hidden');
@@ -2402,19 +2399,16 @@
         inHand:p.inHand, folded:p.folded, committed:p.committed, lastAction:p.lastAction,
         poison:!!p.poison, confused:!!p.confused, buffs:p.buffs||[], used:p.used||{}, seat:p.seat,
       });
-      let blindRemainSec = null, blindMaxed = false;
-      if(G.battleStartAt){
-        const lv = blindLevelNow();
-        if(bbForLevel(lv) >= 3000) blindMaxed = true;
-        else blindRemainSec = Math.max(0, Math.ceil(((lv + 1) * BLIND_INTERVAL_MS - (Date.now() - G.battleStartAt)) / 1000));
-      }
+      const blindLevel = blindLevelNow();
+      const blindMaxed = bbForLevel(blindLevel) >= 3000;
+      const blindRemainHands = handsUntilBlindUp();
       return { seats:G.seats.map(ss), handNo:G.handNo, bb:G.bb, street:G.street, phase:G.phase,
         handActive:G.handActive, revealBoss:G.revealBoss, turnSeat:G.turnSeat, button:G.button,
         sbSeat:(typeof G.sbSeat==='number' ? G.sbSeat : -1), bbSeat:(typeof G.bbSeat==='number' ? G.bbSeat : -1),
         board:G.board, over:G.over, logLines:G.logLines.slice(-60),
         bossRevealed:(G.bossRevealed || [false,false]).slice(),
         defeated:(G.defeated || []).slice(), gauntletComplete:!!G.gauntletComplete,
-        blindRemainSec, blindMaxed };
+        blindLevel, blindMaxed, blindRemainHands };
     }
     function netBroadcastState(){
       if(NET.role!=='host' || !G) return;
@@ -2664,7 +2658,6 @@
         NET.started = true;
         NET.hostGoneHandled = false;
         $('#overlayRoot').innerHTML = '';
-        startBlindTicker();
         $('#startScreen').classList.add('hidden');
         $('#battleScreen').classList.remove('hidden');
         $('#log').innerHTML = '';
@@ -2711,10 +2704,8 @@
         pendingAction:null, over:!!state.over, logLines:peerLogLines(state.logLines), activeHeroSeat:null,
         defeated:(Array.isArray(state.defeated) ? state.defeated : []).filter(id=>BOSS_DEFS.some(b=>b.id===id)),
         gauntletComplete:!!state.gauntletComplete, carry:null,
-        battleStartAt:null, blindLevel:0,
-        blindDeadline:(typeof state.blindRemainSec==='number' && Number.isFinite(state.blindRemainSec)) ? Date.now() + state.blindRemainSec * 1000 : null,
+        blindLevel:(typeof state.blindLevel==='number' && Number.isFinite(state.blindLevel)) ? state.blindLevel : blindLevelForHand(state.handNo),
         blindMaxed:!!state.blindMaxed };
-      if(!blindTicker) startBlindTicker();
       G.boss = G.seats[3];
       const el = $('#log');
       el.innerHTML = G.logLines.map(l=>`<div class="${l.cls}">${esc(l.msg)}</div>`).join('');
